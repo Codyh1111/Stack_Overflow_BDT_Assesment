@@ -1,0 +1,655 @@
+##--------------------------- Step 1. Set up and Initialise DBT and Duckdb adapter ---------------------------##
+## Create the new project in DBT :
+# Initialise project folder: (In VS code Terminal) :
+
+dbt init stackoverflow_dbt
+
+## Assign folder:
+cd stackoverflow_dbt
+
+## (Option) Comfirm Project Location
+pwd
+
+## Sanity check, Run:
+ls
+
+## Activate Vertual Environment: 
+python3.11 -m venv venv
+source venv/bin/activate   # if needed
+
+
+## Install pip and DBT 
+python -m pip install --upgrade pip
+python -m pip install dbt-core dbt-duckdb
+
+## Check if the version is correct and if there is any bug 
+dbt --version
+dbt debug
+
+##--------------------------- Step 2. Assign Data Source ---------------------------##
+
+## Create Source Folder:
+mkdir -p models/sources
+
+## Manual Step: under the newly created folder, creare a YAML file
+
+## Assign Data Source in the YAML file (A folder path contains all table listed:
+version: 2
+
+sources:
+  - name: stackoverflow
+    schema: main
+    tables:
+      - name: comments
+        config:
+          external_location: "s3://us-prd-motherduck-open-datasets/stackoverflow/parquet/2023-05/comments.parquet"
+
+      - name: posts
+        config:
+          external_location: "s3://us-prd-motherduck-open-datasets/stackoverflow/parquet/2023-05/posts.parquet"
+
+      - name: votes
+        config:
+          external_location: "s3://us-prd-motherduck-open-datasets/stackoverflow/parquet/2023-05/votes.parquet"
+
+      - name: users
+        config:
+          external_location: "s3://us-prd-motherduck-open-datasets/stackoverflow/parquet/2023-05/users.parquet"
+
+      - name: badges
+        config:
+          external_location: "s3://us-prd-motherduck-open-datasets/stackoverflow/parquet/2023-05/badges.parquet"
+
+      - name: post_links
+        config:
+          external_location: "s3://us-prd-motherduck-open-datasets/stackoverflow/parquet/2023-05/post_links.parquet"
+
+      - name: tags
+        config:
+          external_location: "s3://us-prd-motherduck-open-datasets/stackoverflow/parquet/2023-05/tags.parquet"
+
+
+## Build a smoke model to test data connection: Manually Create a file under Models\_smoke_test.sql 
+
+## Build Smoke Model:
+select count(*) as post_count
+from {{ source('stackoverflow', 'posts') }}
+
+## Note, if model name overlap with other existing model it might show error, way to check: 
+dbt ls 
+
+
+##--------------------------- Step 3. Check Columns from Source Tables  ---------------------------##
+
+dbt show --inline 'describe select * from {{ source("stackoverflow","comments") }}'
+Previewing inline node:
+| column_name    | column_type | null | key | default | extra |
+| -------------- | ----------- | ---- | --- | ------- | ----- |
+| Id             | BIGINT      | YES  |     |         |       |
+| PostId         | BIGINT      | YES  |     |         |       |
+| Score          | BIGINT      | YES  |     |         |       |
+| Text           | VARCHAR     | YES  |     |         |       |
+| CreationDate   | TIMESTAMP   | YES  |     |         |       |
+| UserId         | BIGINT      | YES  |     |         |       |
+| ContentLicense | VARCHAR     | YES  |     |         |       |
+
+
+dbt show --inline 'describe select * from {{ source("stackoverflow","posts") }}'
+Previewing inline node:
+| column_name          | column_type | null | key | default | extra |
+| -------------------- | ----------- | ---- | --- | ------- | ----- |
+| Id                   | BIGINT      | YES  |     |         |       |
+| PostTypeId           | BIGINT      | YES  |     |         |       |
+| AcceptedAnswerId     | BIGINT      | YES  |     |         |       |
+| ParentId             | BIGINT      | YES  |     |         |       |
+| CreationDate         | TIMESTAMP   | YES  |     |         |       |
+| Score                | BIGINT      | YES  |     |         |       |
+| ViewCount            | BIGINT      | YES  |     |         |       |
+| Body                 | VARCHAR     | YES  |     |         |       |
+| OwnerUserId          | BIGINT      | YES  |     |         |       |
+| LastEditorUserId     | BIGINT      | YES  |     |         |       |
+| LastEditorDisplay... | VARCHAR     | YES  |     |         |       |
+| LastEditDate         | TIMESTAMP   | YES  |     |         |       |
+| LastActivityDate     | TIMESTAMP   | YES  |     |         |       |
+| Title                | VARCHAR     | YES  |     |         |       |
+| Tags                 | VARCHAR     | YES  |     |         |       |
+| AnswerCount          | BIGINT      | YES  |     |         |       |
+| CommentCount         | BIGINT      | YES  |     |         |       |
+| FavoriteCount        | BIGINT      | YES  |     |         |       |
+| CommunityOwnedDate   | TIMESTAMP   | YES  |     |         |       |
+| ContentLicense       | VARCHAR     | YES  |     |         |       |
+
+
+dbt show --inline 'describe select * from {{ source("stackoverflow","votes") }}'
+Previewing inline node:
+| column_name  | column_type | null | key | default | extra |
+| ------------ | ----------- | ---- | --- | ------- | ----- |
+| Id           | BIGINT      | YES  |     |         |       |
+| PostId       | BIGINT      | YES  |     |         |       |
+| VoteTypeId   | BIGINT      | YES  |     |         |       |
+| CreationDate | TIMESTAMP   | YES  |     |         |       |
+
+dbt show --inline 'describe select * from {{ source("stackoverflow","users") }}'
+Previewing inline node:
+| column_name    | column_type | null | key | default | extra |
+| -------------- | ----------- | ---- | --- | ------- | ----- |
+| Id             | BIGINT      | YES  |     |         |       |
+| Reputation     | BIGINT      | YES  |     |         |       |
+| CreationDate   | TIMESTAMP   | YES  |     |         |       |
+| DisplayName    | VARCHAR     | YES  |     |         |       |
+| LastAccessDate | TIMESTAMP   | YES  |     |         |       |
+| AboutMe        | VARCHAR     | YES  |     |         |       |
+| Views          | BIGINT      | YES  |     |         |       |
+| UpVotes        | BIGINT      | YES  |     |         |       |
+| DownVotes      | BIGINT      | YES  |     |         |       |
+
+dbt show --inline 'describe select * from {{ source("stackoverflow","badges") }}'
+Previewing inline node:
+| column_name | column_type | null | key | default | extra |
+| ----------- | ----------- | ---- | --- | ------- | ----- |
+| Id          | BIGINT      | YES  |     |         |       |
+| UserId      | BIGINT      | YES  |     |         |       |
+| Name        | VARCHAR     | YES  |     |         |       |
+| Date        | TIMESTAMP   | YES  |     |         |       |
+| Class       | BIGINT      | YES  |     |         |       |
+| TagBased    | BOOLEAN     | YES  |     |         |       |
+
+
+dbt show --inline 'describe select * from {{ source("stackoverflow","post_links") }}'
+Previewing inline node:
+| column_name   | column_type | null | key | default | extra |
+| ------------- | ----------- | ---- | --- | ------- | ----- |
+| Id            | BIGINT      | YES  |     |         |       |
+| CreationDate  | TIMESTAMP   | YES  |     |         |       |
+| PostId        | BIGINT      | YES  |     |         |       |
+| RelatedPostId | BIGINT      | YES  |     |         |       |
+| LinkTypeId    | BIGINT      | YES  |     |         |       |
+
+dbt show --inline 'describe select * from {{ source("stackoverflow","tags") }}'
+Previewing inline node:
+| column_name   | column_type | null | key | default | extra |
+| ------------- | ----------- | ---- | --- | ------- | ----- |
+| Id            | BIGINT      | YES  |     |         |       |
+| TagName       | VARCHAR     | YES  |     |         |       |
+| Count         | BIGINT      | YES  |     |         |       |
+| ExcerptPostId | BIGINT      | YES  |     |         |       |
+| WikiPostId    | BIGINT      | YES  |     |         |       |
+
+
+########*******########*******########*******########*******########*******########
+########*******########******* For Question 1 ########*******########*******#######
+########*******########*******########*******########*******########*******########
+
+##--------------------------- Section 1. Build Staging Models  ---------------------------##
+
+#************# Step 1. Select Tables #************#
+## Selected Tables: posts / users  
+## Question 1 goal
+## Top 10 users based on total views on questions they posted.
+## From the posts schema, we need only:
+##PostTypeId (to keep only questions)
+##OwnerUserId (who posted)
+##ViewCount (views)
+##From users we need:Id and DisplayName
+
+
+#************# Step 2.  build stg_post.sql at models/staging/ #************#
+
+### 1. then write sql define table:
+select
+  Id as post_id,
+  PostTypeId as post_type_id,
+  OwnerUserId as owner_user_id,
+  ViewCount as view_count
+from {{ source('stackoverflow','posts') }}
+
+#************# Step 3. Run Model: #************#
+
+### 1. Optional Check:
+dbt ls --resource-type model 
+
+### 2. Run and View Created model: 
+dbt run -s stg_posts
+dbt show -s stg_posts --limit 1
+
+
+#************# Step 4. Build models/staging/stg_users.sql Select ID and Display Names: #************#
+select
+  Id as user_id,
+  DisplayName as display_name
+from {{ source('stackoverflow','users') }}
+
+#************# Step 5. Run Built Model #************#
+dbt run -s stg_users     
+dbt show -s stg_users --limit 1      
+
+
+
+
+##---------------------------  Section 2. Build the Q1 Mart Model ---------------------------##
+#************# Step 1. Create models/marts/q1_top_10_users_by_question_views.sql: #************#
+
+### 1. Create Folder: 
+mkdir -p models/marts
+
+### 2. Create model file under the new fiolder:
+# models/marts/q1_top_10_users_by_question_views.sql
+
+select
+  p.owner_user_id as user_id, 
+  u.display_name,
+  sum(coalesce(p.view_count, 0)) as total_question_views,       -- total views for all questions asked by the user
+  count(distinct p.post_id) as total_questions_asked             -- total number of questions
+from {{ ref('stg_posts') }} p
+left join {{ ref('stg_users') }} u
+  on u.user_id = p.owner_user_id
+where p.post_type_id = 1
+  and p.owner_user_id is not null
+group by 1, 2                                                     -- group by user_id and display_name to get the total views and total questions asked per user
+order by total_question_views desc
+limit 10
+
+
+### 3. Run Model and get answers:
+dbt run -s q1_top_10_users_by_question_views 
+dbt show -s q1_top_10_users_by_question_views
+
+###---***---###---***---###---***---###---***---###---###---###---###---###---###
+###---***---###---***---###   Final Result for Q1 :   ###---***---###---***---###
+###---***---###---***---###---***---###---***---###---###---###---###---###---###
+
+09:57:19  Running with dbt=1.11.4
+09:57:19  Registered adapter: duckdb=1.10.0
+09:57:20  Found 6 models, 4 data tests, 1 sql operation, 7 sources, 472 macros
+09:57:20  
+09:57:20  Concurrency: 1 threads (target='dev')
+09:57:20  
+Previewing inline node:
+| user_id | display_name | total_question_views | question_count |
+| ------- | ------------ | -------------------- | -------------- |
+|   51816 | Joan Venge   |             36360031 |            817 |
+|    4653 | leora        |             33928062 |           1814 |
+|   39677 | Blankman     |             31222767 |           2616 |
+|  179736 | TIMEX        |             31201975 |           1579 |
+|   49153 | Ali          |             30976018 |            837 |
+|   48523 | Andrew       |             24894407 |            739 |
+|  117700 | Alex Gordon  |             23998658 |           1857 |
+|  245549 | Roman        |             22887305 |            616 |
+|  104015 | omg          |             20419905 |            391 |
+|    4872 | Ray          |             20368209 |             71 |
+
+
+########*******########*******########*******########*******########*******########
+########*******########******* For Question 2 ########*******########*******#######
+
+##---------------------------  Section 1. — Add Needed Columns for stg_posts ---------------------------##
+
+#************# Step 1. Select Tables #************#
+# From Post Schema, we add:
+# AcceptedAnswerId ParentId ViewCount OwnerUserId CreationDate Score
+# Becuase we only count accepted answer, AnswerCount can not be used. 
+
+
+#************# Step 1. Update stg_posts.sql, add columns that required for Q2: #************#
+select
+  Id as post_id,
+  PostTypeId as post_type_id,
+  AcceptedAnswerId as accepted_answer_id,
+  ParentId as parent_id,
+  OwnerUserId as owner_user_id,
+  CreationDate as created_at,
+  ViewCount as view_count,
+  Score as score
+from {{ source('stackoverflow','posts') }}
+
+#************# Step 2. Run the updated stg_posts and view columns :#************#
+dbt run -s stg_posts
+dbt show -s stg_posts --limit 1    
+| post_id | post_type_id | accepted_answer_id | parent_id | owner_user_id |           created_at | ... |
+| ------- | ------------ | ------------------ | --------- | ------------- | -------------------- | --- |
+|       4 |            1 |                  7 |           |             8 | 2008-07-31 21:42:... | ... |
+
+##---------------------------  Section 2 — Build Intermediet Model for Time & Band ---------------------------##
+
+#************# Step 1.  Build Intermediate Folder #************#
+### 1. Create folder if needed:
+mkdir -p models/intermediate
+
+### 2. Create: models/intermediate/int_questions_with_accepted_answer.sql
+with questions as (
+  select
+    post_id as question_id,
+    created_at as question_created_at,                
+    accepted_answer_id
+  from {{ ref('stg_posts') }}
+  where post_type_id = 1                                  --filter to only questions        
+    and accepted_answer_id is not null                    --filter to only questions with an accepted answer
+    and created_at is not null                            --filter to only questions with a created_at timestamp
+answers as (
+  select
+    post_id as answer_id,
+    created_at as answer_created_at
+  from {{ ref('stg_posts') }}
+  where post_type_id = 2                                  --filter to only answers
+    and created_at is not null
+)
+select
+  q.question_id,
+  q.question_created_at,
+  q.accepted_answer_id,
+  a.answer_created_at as accepted_answer_created_at,
+  date_diff('second', q.question_created_at, a.answer_created_at) as secs_to_accepted       --calculate time to accepted answer
+from questions q
+join answers a                                                                               
+  on a.answer_id = q.accepted_answer_id
+where date_diff('second', q.question_created_at, a.answer_created_at) >= 0                 --filter to only questions where the accepted answer was created after the question  
+
+
+### 3. Run model and show results 
+dbt run -s int_questions_with_accepted_answer
+dbt show --inline 'select * from main.int_questions_with_accepted_answer limit 5'
+
+
+
+
+
+#************# Step 3. Creare Mart model with time  #************# 
+
+### 1. Create: models/marts/q2_monthly_accepted_answer_time_bands.sql
+
+with base as (
+  select
+    date_trunc('month', question_created_at) as month_start,        # Truncates Timestemp to the first dat of it's month 
+    secs_to_accepted,
+    case
+      when secs_to_accepted < 60 then '<1 min'                      # Create band based on Second
+      when secs_to_accepted < 5*60 then '1-5 mins'
+      when secs_to_accepted < 60*60 then '5 mins-1 hour'
+      when secs_to_accepted < 3*60*60 then '1-3 hours'
+      when secs_to_accepted < 24*60*60 then '3 hours-1 day'
+      when secs_to_accepted < 3*24*60*60 then '1-3 days'
+      when secs_to_accepted < 7*24*60*60 then '3-7 days'
+      else '7+ days'
+    end as band
+  from {{ ref('int_questions_with_accepted_answer') }}
+)
+select
+  strftime(month_start, '%Y-%m') as month,                            # Create flag for time band 
+  sum(case when band = '<1 min' then 1 else 0 end) as "<1 min",
+  sum(case when band = '1-5 mins' then 1 else 0 end) as "1-5 mins",
+  sum(case when band = '5 mins-1 hour' then 1 else 0 end) as "5 mins-1 hour",
+  sum(case when band = '1-3 hours' then 1 else 0 end) as "1-3 hours",
+  sum(case when band = '3 hours-1 day' then 1 else 0 end) as "3 hours-1 day",
+  sum(case when band = '1-3 days' then 1 else 0 end) as "1-3 days",
+  sum(case when band = '3-7 days' then 1 else 0 end) as "3-7 days",
+  sum(case when band = '7+ days' then 1 else 0 end) as "7+ days",
+  count(*) as total_accepted_answer
+from base
+group by 1, month_start
+order by month_start
+
+### 2.  Run code and show result:
+dbt run -s q2_monthly_accepted_answer_time_bands
+dbt show --inline 'select * from main.q2_monthly_accepted_answer_time_bands order by month' --limit 200
+
+###---***---###---***---###---***---###---***---###---###---###---###---###---###
+###---***---###---***---###   Final Result for Q2 :   ###---***---###---***---###
+###---***---###---***---###---***---###---***---###---###---###---###---###---###
+Previewing inline node:
+| month   | <1 min | 1-5 mins | 5 mins-1 hour | 1-3 hours | 3 hours-1 day | ... |
+| ------- | ------ | -------- | ------------- | --------- | ------------- | --- |
+| 2008-07 |      0 |        0 |             1 |         0 |             1 | ... |
+| 2008-08 |     39 |      423 |          1381 |       359 |           350 | ... |
+| 2008-09 |    139 |     2033 |          4878 |      1061 |          1246 | ... |
+| 2008-10 |     80 |     1696 |          4969 |      1191 |          1378 | ... |
+| 2008-11 |     38 |     1125 |          4396 |      1071 |          1123 | ... |
+| 2008-12 |     24 |      896 |          4302 |      1097 |          1098 | ... |
+| 2009-01 |     25 |     1566 |          5778 |      1282 |          1463 | ... |
+| 2009-02 |     31 |     1978 |          6420 |      1368 |          1529 | ... |
+| 2009-03 |     44 |     2459 |          7248 |      1480 |          1772 | ... |
+| 2009-04 |     42 |     2634 |          7356 |      1549 |          1670 | ... |
+
+
+
+########*******########*******########*******########*******########*******########
+########*******########******* For Question 3 ########*******########*******#######
+########*******########*******########*******########*******########*******########
+
+##---------------------------  Section 1. Select Variables and Build Source Tables ---------------------------##
+
+### 1. Logic: 
+#PostTypeId identifies questions versus answers, and ParentId links answers to their parent question. 
+#These fields were used to build thread-level relationships required to detect @replies from the original asker.
+
+#************# Step 1. Validate Post Type Id Mapping #************#
+
+### 1. Show distribution of PostTypeId (PROC FREQ equivalent) 
+dbt show --inline "select post_type_id, count(*) as record_cnt from {{ ref('stg_posts') }} group by 1 order by 1"
+dbt show --inline "select parent_id, count(*) as record_cnt from {{ ref('stg_posts') }} group by 1 order by 1"
+#This proves: There are multiple Post_Type_Id parent_id values
+
+### 2. Show relationship between PostTypeId and ParentId
+dbt show --inline '
+select
+  post_type_id,
+  count(*) as total_posts,
+  sum(case when parent_id is null then 1 else 0 end) as parent_null_cnt,
+  sum(case when parent_id is not null then 1 else 0 end) as parent_not_null_cnt
+from {{ ref("stg_posts") }}
+group by 1
+order by 1
+'
+###---###--- As Result: ---###---###
+Previewing inline node:
+| post_type_id | total_posts | parent_null_cnt | parent_not_null_cnt |
+| ------------ | ----------- | --------------- | ------------------- |
+|            1 |    23536501 |        23536501 |                   0 |
+|            2 |    34681205 |               0 |            34681205 |
+|            3 |         167 |             167 |                   0 |
+|            4 |       55565 |           55565 |                   0 |
+|            5 |       55563 |           55563 |                   0 |
+
+
+# From Open Source, publicly documented StackOverflow data definitions: 
+# <PostTypeId> Type 1 = question, type 2 = answer.
+# <parentId> For an answer: id of the corresponding question. For a question: missing, indicated by an empty string.
+
+# To ensure correct interpretation , I profiled the data and observed that records with above 2 steps:
+# PostTypeId=1 have no ParentId and represent root posts, 
+# while PostTypeId=2 consistently reference a ParentId, indicating hierarchical relationships. 
+# This behaviour aligns with the public source 
+# Ideally we need confirmation of this to make sure those numbers represent the correct meaning 
+
+#************# Step 2. Update Posts Table for Q3 #************#
+
+##---------------------------  Section 2. Building Models ---------------------------##
+
+#************# Step 1. Build stg_comments for Txt Mining #************#
+### 1. Create Staging model file for comments
+select
+  Id as comment_id,
+  PostId as post_id,
+  UserId as user_id,
+  CreationDate as created_at,
+  Text as comment_text
+from {{ source('stackoverflow','comments') }}
+
+### 2. Run Model and show results 
+dbt run -s stg_comments
+dbt show --inline 'select * from main.stg_comments' --limit 5
+
+###---###--- As Result: ---###---###
+Previewing inline node:
+| comment_id | post_id | user_id |           created_at | comment_text         |
+| ---------- | ------- | ------- | -------------------- | -------------------- |
+|         10 |   45651 |     242 | 2008-09-06 13:38:... | It will help if y... |
+|         12 |   47428 |    4642 | 2008-09-06 13:51:... | One of the things... |
+|         14 |   47481 |    4642 | 2008-09-06 14:15:... | I agree, both Cod... |
+|         15 |   47373 |    2495 | 2008-09-06 14:30:... | Just wanted to me... |
+|         16 |   47497 |    4642 | 2008-09-06 14:42:... |                      |
+
+
+
+
+#************# Step 2. Create an intermediate model listing “thread posts” (question + its answers) #************#
+
+
+# We need a mapping from question_id → all posts in its thread.
+
+### 1. Create: models/intermediate/int_question_thread_posts.sql
+with questions as (
+  select post_id as question_id
+  from {{ ref('stg_posts') }}
+  where post_type_id = 1
+),
+answers as (
+  select
+    parent_id as question_id,
+    post_id   as post_id
+  from {{ ref('stg_posts') }}
+  where post_type_id = 2
+    and parent_id is not null
+)
+select question_id, question_id as post_id
+from questions
+union all
+select question_id, post_id
+from answers
+
+### 2. Run Model and show results 
+dbt run -s int_question_thread_posts
+dbt show --inline 'select * from main.int_question_thread_posts' --limit 5
+
+###---###--- As Result: ---###---###
+Previewing inline node:
+| question_id | post_id |
+| ----------- | ------- |
+|           4 |       4 |
+|           6 |       6 |
+|           9 |       9 |
+|          11 |      11 |
+|          13 |      13 |
+
+
+#************# Step 3. Text Mining @reply comments by the question owner #************#
+
+### 1. Create: models/intermediate/int_q3_owner_at_replies.sql
+
+### 2. Run Model and show results 
+with questions as (
+  select
+    post_id as question_id,                     -- we need this to join to thread posts and comments
+    owner_user_id as question_owner_user_id     -- we need this to join to comments and check if the comment author is the same as the question owner
+  from {{ ref('stg_posts') }}                     
+  where post_type_id = 1                        -- filter to only questions
+    and owner_user_id is not null                    
+),
+thread_posts as (
+  select * from {{ ref('int_question_thread_posts') }}  
+),
+owner_comments as (
+  select
+    tp.question_id,             -- we need this to group by question and count the number of comments per question
+    c.comment_id,                 -- we need this to count the number of comments per question
+    c.user_id,              -- we need this to check if the comment author is the same as the question owner
+    c.comment_text                      -- we need this to check if the comment starts with @   
+  from thread_posts tp                  
+  join {{ ref('stg_comments') }} c      
+    on c.post_id = tp.post_id
+  join questions q      
+    on q.question_id = tp.question_id
+   and q.question_owner_user_id = c.user_id
+  where regexp_matches(c.comment_text, '@')  -- find @ anywhere in the owner replied comments
+)
+select
+  question_id
+from owner_comments             -- look at all comments that are made by the question owner on their own question thread
+group by 1                      -- group by question to count the number of comments per question
+
+
+### 2. Run Model and show results: 
+dbt run -s int_q3_owner_at_replies
+dbt show --inline 'select * from main.int_q3_owner_at_replies' --limit 5
+
+###---###--- As Result: ---###---###
+
+
+#************# Step 4 — Final mart model: the Q3 answer #************#
+
+### 1. Create: models/marts/q3_questions_with_owner_at_replies.sql
+select
+  count(*) as questions_with_owner_at_replies
+from {{ ref('int_q3_owner_at_replies') }}
+
+### 2. Run model and show the result:
+dbt run -s q3_questions_with_owner_at_replies
+dbt show --inline 'select * from main.q3_questions_with_owner_at_replies' 
+
+###---###--- As Result: ---###---###
+
+
+
+###---***---###---***---###---***---###---***---###---###---###---###---###---###
+###---***---###---***---###       Simple Test         ###---***---###---***---###
+###---***---###---***---###---***---###---***---###---###---###---###---###---###
+
+### 1. Create a single dbt tests file: models/schema.yml
+
+version: 2
+
+models:
+  - name: stg_posts
+    description: "Staged StackOverflow posts"
+    columns:
+      - name: post_id
+        tests: [not_null, unique]
+      - name: post_type_id
+        tests: [not_null]
+
+  - name: stg_users
+    description: "Staged StackOverflow users"
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+      - name: display_name
+        tests: [not_null]
+
+  - name: stg_comments
+    description: "Staged StackOverflow comments"
+    columns:
+      - name: comment_id
+        tests: [not_null, unique]
+      - name: post_id
+        tests: [not_null]
+      - name: user_id
+        tests: [not_null]
+
+  - name: int_questions_with_accepted_answer
+    description: "Questions joined to their accepted answers with time-to-accepted calculated"
+    columns:
+      - name: question_id
+        tests: [not_null, unique]
+      - name: accepted_answer_id
+        tests: [not_null]
+      - name: secs_to_accepted
+        tests: [not_null]
+
+  - name: q1_top_10_users_by_question_views
+    description: "Top 10 users by total question views"
+    columns:
+      - name: user_id
+        tests: [not_null]
+      - name: total_question_views
+        tests: [not_null]
+
+  - name: q2_monthly_accepted_answer_time_bands
+    description: "Monthly banded counts of time-to-accepted-answer"
+    columns:
+      - name: month
+        tests: [not_null]
+      - name: total_with_accepted_answer
+        tests: [not_null]
+
+
+### 2. Run Test
+dbt test
