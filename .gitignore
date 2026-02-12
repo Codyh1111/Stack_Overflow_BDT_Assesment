@@ -1,0 +1,13 @@
+logs/
+target/
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# DuckDB temp
+/dev.duckdb.tmp/
+*.tmp
+*.duckdb
+*.duckdb.wal
+*.duckdb.tmp

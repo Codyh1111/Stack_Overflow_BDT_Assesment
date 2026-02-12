@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_posts
+    columns:
+      - name: post_id
+        tests: [not_null, unique]
+      - name: post_type_id
+        tests: [not_null]
+
+  - name: stg_users
+    columns:
+      - name: user_id
+        tests: [not_null, unique]
+
+  - name: stg_comments
+    columns:
+      - name: comment_id
+        tests: [not_null, unique]
+      - name: post_id
+        tests: [not_null]
+
+  - name: q1_top_10_users_by_question_views
+    columns:
+      - name: user_id
+        tests: [not_null]
