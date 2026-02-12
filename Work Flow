@@ -281,12 +281,13 @@ Previewing inline node:
 
 ########*******########*******########*******########*******########*******########
 ########*******########******* For Question 2 ########*******########*******#######
+########*******########*******########*******########*******########*******########
 
 ##---------------------------  Section 1. — Add Needed Columns for stg_posts ---------------------------##
 
 #************# Step 1. Select Tables #************#
 # From Post Schema, we add:
-# AcceptedAnswerId ParentId ViewCount OwnerUserId CreationDate Score
+# AcceptedAnswerId  CreationDate 
 # Becuase we only count accepted answer, AnswerCount can not be used. 
 
 
@@ -295,11 +296,10 @@ select
   Id as post_id,
   PostTypeId as post_type_id,
   AcceptedAnswerId as accepted_answer_id,
-  ParentId as parent_id,
   OwnerUserId as owner_user_id,
   CreationDate as created_at,
   ViewCount as view_count,
-  Score as score
+
 from {{ source('stackoverflow','posts') }}
 
 #************# Step 2. Run the updated stg_posts and view columns :#************#
@@ -417,9 +417,48 @@ Previewing inline node:
 
 ##---------------------------  Section 1. Select Variables and Build Source Tables ---------------------------##
 
+#************# Step 1. Select Tables #************#
+## Selected Tables: posts / comments  
+## ParentId 
+
+#************# Step 2.  Updae stg_post.sql at models/staging/ #************#
+select
+  Id as post_id,
+  PostTypeId as post_type_id,
+  AcceptedAnswerId as accepted_answer_id,
+  ParentId as parent_id,
+  OwnerUserId as owner_user_id,
+  CreationDate as created_at,
+  ViewCount as view_count,
+from {{ source('stackoverflow','posts') }}
+
+
+### 1. then write sql define table:
+select
+  Id as post_id,
+  PostTypeId as post_type_id,
+  OwnerUserId as owner_user_id,
+  ViewCount as view_count
+from {{ source('stackoverflow','posts') }}
+
+
+### 2. Run Model and result
+dbt run -s stg_posts   
+dbt show --inline 'select * from main.stg_posts' 
+
 ### 1. Logic: 
 #PostTypeId identifies questions versus answers, and ParentId links answers to their parent question. 
 #These fields were used to build thread-level relationships required to detect @replies from the original asker.
+
+###---###--- As Result: ---###---###
+Previewing inline node:
+| post_id | post_type_id | accepted_answer_id | parent_id | owner_user_id |           created_at | ... |
+| ------- | ------------ | ------------------ | --------- | ------------- | -------------------- | --- |
+|       4 |            1 |                  7 |           |             8 | 2008-07-31 21:42:... | ... |
+|       6 |            1 |                 31 |           |             9 | 2008-07-31 22:08:... | ... |
+|       7 |            2 |                    |         4 |             9 | 2008-07-31 22:17:... | ... |
+|       9 |            1 |               1404 |           |             1 | 2008-07-31 23:40:... | ... |
+|      11 |            1 |               1248 |           |             1 | 2008-07-31 23:55:... | ... |
 
 #************# Step 1. Validate Post Type Id Mapping #************#
 
@@ -572,7 +611,7 @@ dbt run -s int_q3_owner_at_replies
 dbt show --inline 'select * from main.int_q3_owner_at_replies' --limit 5
 
 ###---###--- As Result: ---###---###
-
+Due to the data volume and joins involved, this model may take longer to materialise in DuckDB.
 
 #************# Step 4 — Final mart model: the Q3 answer #************#
 
@@ -586,8 +625,8 @@ dbt run -s q3_questions_with_owner_at_replies
 dbt show --inline 'select * from main.q3_questions_with_owner_at_replies' 
 
 ###---###--- As Result: ---###---###
-
-
+Taking too long to produce, very time consuming 
+Due to the data volume and joins involved, this model may take longer to materialise in DuckDB.
 
 ###---***---###---***---###---***---###---***---###---###---###---###---###---###
 ###---***---###---***---###       Simple Test         ###---***---###---***---###
@@ -652,4 +691,4 @@ models:
 
 
 ### 2. Run Test
-dbt test
+dbt test 
