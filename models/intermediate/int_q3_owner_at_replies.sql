@@ -14,14 +14,14 @@ owner_comments as (
     tp.question_id,             -- we need this to group by question and count the number of comments per question
     c.comment_id,                 -- we need this to count the number of comments per question
     c.user_id,              -- we need this to check if the comment author is the same as the question owner
-    c.comment_text                      -- we need this to check if the comment starts with @   
+    c.comment_text                      -- we need this to check if the comment have @   
   from thread_posts tp                  
   join {{ ref('stg_comments') }} c      
     on c.post_id = tp.post_id
   join questions q      
     on q.question_id = tp.question_id
    and q.question_owner_user_id = c.user_id
-  where regexp_matches(c.comment_text, '^\\s*@')  -- search for comments that start with @, allowing for leading whitespace before the @
+  where regexp_matches(c.comment_text, '@')  -- search for comments that with @
 )
 select
   question_id
