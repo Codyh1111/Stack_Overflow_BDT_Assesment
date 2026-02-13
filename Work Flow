@@ -611,7 +611,15 @@ dbt run -s int_q3_owner_at_replies
 dbt show --inline 'select * from main.int_q3_owner_at_replies' --limit 5
 
 ###---###--- As Result: ---###---###
-Due to the data volume and joins involved, this model may take longer to materialise in DuckDB.
+###---###--- As Result: ---###---###
+Previewing inline node:
+| question_id |
+| ----------- |
+|      966086 |
+|      976841 |
+|      982205 |
+|     1013651 |
+|     1014034 |
 
 #************# Step 4 — Final mart model: the Q3 answer #************#
 
@@ -625,8 +633,11 @@ dbt run -s q3_questions_with_owner_at_replies
 dbt show --inline 'select * from main.q3_questions_with_owner_at_replies' 
 
 ###---###--- As Result: ---###---###
-Taking too long to produce, very time consuming 
-Due to the data volume and joins involved, this model may take longer to materialise in DuckDB.
+Previewing inline node:
+| questions_with_ow... |
+| -------------------- |
+|              3382995 |
+
 
 ###---***---###---***---###---***---###---***---###---###---###---###---###---###
 ###---***---###---***---###       Simple Test         ###---***---###---***---###
